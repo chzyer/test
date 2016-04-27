@@ -8,11 +8,12 @@ import (
 	"runtime"
 	"strings"
 
-	"gopkg.in/logex.v1"
+	"github.com/chzyer/logex"
 )
 
 var (
 	mainRoot           = ""
+	RootPath           = os.TempDir()
 	ErrNotExcept       = logex.Define("result not expect")
 	ErrNotEqual        = logex.Define("result not equals")
 	ErrRequireNotEqual = logex.Define("result require not equals")
@@ -202,7 +203,7 @@ func Panic(depth int, obj interface{}) {
 func Root(s string) string {
 	root := os.Getenv("TEST_ROOT")
 	if root == "" {
-		root = "/data/next2"
+		root = RootPath
 	}
 	return root + s
 }

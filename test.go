@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,6 +20,10 @@ var (
 	ErrRequireNotEqual = logex.Define("result require not equals")
 	StrNotSuchFile     = "no such file or directory"
 )
+
+func init() {
+	println("tmpdir:", RootPath)
+}
 
 type testException struct {
 	depth int
@@ -92,7 +97,37 @@ func NotEqual(a, b interface{}, e ...error) {
 	notEqual(1, a, b, e)
 }
 
+func toInt(a interface{}) (int64, bool) {
+	switch n := a.(type) {
+	case int:
+		return int64(n), true
+	case int8:
+		return int64(n), true
+	case int16:
+		return int64(n), true
+	case int32:
+		return int64(n), true
+	case int64:
+		return int64(n), true
+	case uintptr:
+		return int64(n), true
+	default:
+		return -1, false
+	}
+}
+
+func Mark() {
+	r := strings.Repeat("-", 20)
+	println(r)
+}
+
 func Equal(a, b interface{}, e ...error) {
+	if ai, ok := toInt(a); ok {
+		if bi, ok := toInt(b); ok {
+			equal(1, ai, bi, e)
+			return
+		}
+	}
 	equal(1, a, b, e)
 }
 
@@ -200,10 +235,29 @@ func Panic(depth int, obj interface{}) {
 	panic(t)
 }
 
-func Root(s string) string {
+func CleanTmp() {
+	os.RemoveAll(root(2))
+}
+
+func TmpFile() (*os.File, error) {
+	dir := root(2)
+	if err := os.MkdirAll(dir, 0744); err != nil {
+		return nil, err
+	}
+	return ioutil.TempFile(dir, "")
+}
+
+func Root() string {
+	return root(1)
+}
+
+func root(n int) string {
+	pc, _, _, _ := runtime.Caller(n)
+	name := runtime.FuncForPC(pc).Name()
+
 	root := os.Getenv("TEST_ROOT")
 	if root == "" {
 		root = RootPath
 	}
-	return root + s
+	return filepath.Join(root, name)
 }

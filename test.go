@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/chzyer/logex"
@@ -136,7 +137,11 @@ func CheckError(e error, s string) {
 		Panic(0, ErrNotExcept)
 	}
 	if !strings.Contains(e.Error(), s) {
-		Panic(0, s)
+		Panic(0, fmt.Errorf(
+			"want: %s, got %s",
+			strconv.Quote(s),
+			strconv.Quote(e.Error()),
+		))
 	}
 }
 
@@ -248,12 +253,15 @@ func TmpFile() (*os.File, error) {
 }
 
 func Root() string {
-	return root(1)
+	return root(2)
 }
 
 func root(n int) string {
 	pc, _, _, _ := runtime.Caller(n)
 	name := runtime.FuncForPC(pc).Name()
+	if idx := strings.LastIndex(name, "."); idx > 0 {
+		name = name[:idx] + "/" + name[idx+1:]
+	}
 
 	root := os.Getenv("TEST_ROOT")
 	if root == "" {

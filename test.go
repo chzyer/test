@@ -1,7 +1,10 @@
 package test
 
 import (
+	"bytes"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -83,6 +86,71 @@ func getErr(def error, e []error) error {
 		return def
 	}
 	return e[0]
+}
+
+func ReadAt(r io.ReaderAt, b []byte, at int64) {
+	n, err := r.ReadAt(b, at)
+	if err != nil {
+		Panic(0, fmt.Errorf("ReadAt: %v, got: %v", strconv.Quote(string(b)), err))
+	}
+	if n != len(b) {
+		Panic(0, fmt.Errorf("ReadAt: %v, got: %v", strconv.Quote(string(b)), n))
+	}
+}
+
+func Read(r io.Reader, b []byte) {
+	buf := make([]byte, len(b))
+	n, err := r.Read(buf)
+	if err != nil && !logex.Equal(err, io.EOF) {
+		Panic(0, fmt.Errorf("Read: %v, got: %v", err))
+	}
+	if n != len(buf) {
+		Panic(0, fmt.Errorf("Read: %v, got: %v", n))
+	}
+	if !bytes.Equal(buf, b) {
+		Panic(0, fmt.Errorf("Read: result not equal"))
+	}
+}
+
+func ReadString(r io.Reader, s string) {
+	buf := make([]byte, len(s))
+	n, err := r.Read(buf)
+	if err != nil && !logex.Equal(err, io.EOF) {
+		Panic(0, fmt.Errorf("ReadString: %v, got: %v", strconv.Quote(s), err))
+	}
+	if n != len(buf) {
+		Panic(0, fmt.Errorf("ReadString: %v, got: %v", strconv.Quote(s), n))
+	}
+}
+
+func WriteAt(w io.WriterAt, b []byte, at int64) {
+	n, err := w.WriteAt(b, at)
+	if err != nil {
+		Panic(0, err)
+	}
+	if n != len(b) {
+		Panic(0, "short write")
+	}
+}
+
+func Write(w io.Writer, b []byte) {
+	n, err := w.Write(b)
+	if err != nil {
+		Panic(0, err)
+	}
+	if n != len(b) {
+		Panic(0, "short write")
+	}
+}
+
+func WriteString(w io.Writer, s string) {
+	n, err := w.Write([]byte(s))
+	if err != nil {
+		Panic(0, err)
+	}
+	if n != len(s) {
+		Panic(0, "short write")
+	}
 }
 
 func Equals(o ...interface{}) {
@@ -253,7 +321,9 @@ func TmpFile() (*os.File, error) {
 }
 
 func Root() string {
-	return root(2)
+	p := root(2)
+	os.RemoveAll(root(2))
+	return p
 }
 
 func root(n int) string {
@@ -268,4 +338,10 @@ func root(n int) string {
 		root = RootPath
 	}
 	return filepath.Join(root, name)
+}
+
+func RandBytes(n int) []byte {
+	buf := make([]byte, n)
+	rand.Read(buf)
+	return buf
 }

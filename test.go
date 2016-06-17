@@ -91,24 +91,44 @@ func getErr(def error, e []error) error {
 func ReadAt(r io.ReaderAt, b []byte, at int64) {
 	n, err := r.ReadAt(b, at)
 	if err != nil {
-		Panic(0, fmt.Errorf("ReadAt: %v, got: %v", strconv.Quote(string(b)), err))
+		Panic(0, fmt.Errorf("ReadAt error: %v", err))
 	}
 	if n != len(b) {
-		Panic(0, fmt.Errorf("ReadAt: %v, got: %v", strconv.Quote(string(b)), n))
+		Panic(0, fmt.Errorf("ReadAt short read: %v, want: %v", n, len(b)))
+	}
+}
+
+func ReadAndCheck(r io.Reader, b []byte) {
+	buf := make([]byte, len(b))
+	Read(r, buf)
+	if !bytes.Equal(buf, b) {
+		Panic(0, fmt.Errorf("Read: result not equal"))
 	}
 }
 
 func Read(r io.Reader, b []byte) {
-	buf := make([]byte, len(b))
-	n, err := r.Read(buf)
+	n, err := r.Read(b)
 	if err != nil && !logex.Equal(err, io.EOF) {
 		Panic(0, fmt.Errorf("Read: %v, got: %v", err))
 	}
-	if n != len(buf) {
+	if n != len(b) {
 		Panic(0, fmt.Errorf("Read: %v, got: %v", n))
 	}
-	if !bytes.Equal(buf, b) {
-		Panic(0, fmt.Errorf("Read: result not equal"))
+}
+
+func ReadStringAt(r io.ReaderAt, off int64, s string) {
+	buf := make([]byte, len(s))
+	n, err := r.ReadAt(buf, off)
+	buf = buf[:n]
+	if err != nil {
+		Panic(0, fmt.Errorf("ReadStringAt: %v", err))
+	}
+	if string(buf) != s {
+		Panic(0, fmt.Errorf(
+			"ReadStringAt not match: %v, got: %v",
+			strconv.Quote(s),
+			strconv.Quote(string(buf)),
+		))
 	}
 }
 
@@ -120,6 +140,13 @@ func ReadString(r io.Reader, s string) {
 	}
 	if n != len(buf) {
 		Panic(0, fmt.Errorf("ReadString: %v, got: %v", strconv.Quote(s), n))
+	}
+	if string(buf) != s {
+		Panic(0, fmt.Errorf(
+			"ReadString not match: %v, got: %v",
+			strconv.Quote(s),
+			strconv.Quote(string(buf)),
+		))
 	}
 }
 
@@ -190,6 +217,32 @@ func Mark() {
 	println(r)
 }
 
+var globalMarkInfo string
+
+func MarkInfo(obj interface{}) {
+	globalMarkInfo = fmt.Sprint(obj)
+}
+
+func EqualBytes(a, b []byte) {
+	size := 16
+	if len(a) != len(b) {
+		Panic(0, fmt.Sprintf("equal bytes, %v != %v", len(a), len(b)))
+	}
+	if bytes.Equal(a, b) {
+		return
+	}
+
+	for off := 0; off < len(a); off += size {
+		if !bytes.Equal(a[off:off+size], b[off:off+size]) {
+			Panic(0, fmt.Sprintf(
+				"equal bytes in [%v, %v]:\n\t%v\n\t%v",
+				off, off+size,
+				a[off:off+size], b[off:off+size],
+			))
+		}
+	}
+}
+
 func Equal(a, b interface{}, e ...error) {
 	if ai, ok := toInt(a); ok {
 		if bi, ok := toInt(b); ok {
@@ -255,7 +308,7 @@ func equal(d int, a, b interface{}, e []error) {
 		return
 	}
 	if !reflect.DeepEqual(a, b) {
-		Panic(d, fmt.Sprintf("%v: (%v, %v)", getErr(ErrNotEqual, e), a, b))
+		Panic(d, fmt.Sprintf("%v: (%+v, %+v)", getErr(ErrNotEqual, e), a, b))
 	}
 }
 
@@ -302,9 +355,12 @@ func Panic(depth int, obj interface{}) {
 	}
 	if err, ok := obj.(error); ok {
 		t.info = logex.DecodeError(err)
-		panic(t)
+	} else {
+		t.info = fmt.Sprint(obj)
 	}
-	t.info = fmt.Sprint(obj)
+	if globalMarkInfo != "" {
+		t.info = "[info:" + globalMarkInfo + "] " + t.info
+	}
 	panic(t)
 }
 
@@ -343,5 +399,13 @@ func root(n int) string {
 func RandBytes(n int) []byte {
 	buf := make([]byte, n)
 	rand.Read(buf)
+	return buf
+}
+
+func SeqBytes(n int) []byte {
+	buf := make([]byte, n)
+	for idx := range buf {
+		buf[idx] = byte(idx)
+	}
 	return buf
 }

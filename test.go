@@ -221,11 +221,13 @@ func Mark(obj ...interface{}) {
 	globalMarkInfo = fmt.Sprint(obj...)
 }
 
-func EqualBytes(a, b []byte) {
-	equalBytes(0, a, b)
+func EqualBytes(got, want []byte) {
+	equalBytes(0, got, want)
 }
 
-func equalBytes(n int, a, b []byte) {
+func equalBytes(n int, got, want []byte) {
+	a := got
+	b := want
 	size := 16
 	if len(a) != len(b) {
 		Panic(n, fmt.Sprintf("equal bytes, %v != %v", len(a), len(b)))
@@ -241,7 +243,7 @@ func equalBytes(n int, a, b []byte) {
 		}
 		if !bytes.Equal(a[off:end], b[off:end]) {
 			Panic(n, fmt.Sprintf(
-				"equal [%v]byte in [%v, %v]:\n\t%v\n\t%v",
+				"equal [%v]byte in [%v, %v]:\n\tgot: %v\n\twant: %v",
 				len(a),
 				off, off+size,
 				a[off:end], b[off:end],

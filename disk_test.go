@@ -7,7 +7,7 @@ import (
 
 func TestMemDisk(t *testing.T) {
 	defer New(t)
-	md := NewMemDisk(0)
+	md := NewMemDisk()
 	WriteAt(md, []byte("hello"), 4)
 	h := make([]byte, 5)
 	n, err := md.ReadAt(h, 3)

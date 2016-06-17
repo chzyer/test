@@ -6,12 +6,13 @@ import (
 )
 
 type MemDisk struct {
-	data       []byte
+	data       [][]byte
+	size       int64
 	woff, roff int
 }
 
-func NewMemDisk(n int) *MemDisk {
-	return &MemDisk{data: make([]byte, n)}
+func NewMemDisk() *MemDisk {
+	return &MemDisk{}
 }
 
 func (w *MemDisk) Write(b []byte) (int, error) {
@@ -20,26 +21,56 @@ func (w *MemDisk) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func (w *MemDisk) WriteAt(b []byte, off int64) (int, error) {
-	for cap(w.data) < len(b)+int(off) {
-		w.data = w.data[:cap(w.data)]
-		w.data = append(w.data, 0)[:len(w.data)]
+func (w *MemDisk) getData(off int64) []byte {
+	idx := int(off >> 20)
+	if idx >= cap(w.data) {
+		newdata := make([][]byte, idx+1)
+		copy(newdata, w.data)
+		w.data = newdata
 	}
-	w.data = w.data[:int(off)+len(b)]
-	copy(w.data[off:], b)
-	return len(b), nil
+	if len(w.data[idx]) == 0 {
+		w.data[idx] = make([]byte, 1<<20)
+	}
+
+	return w.data[idx][off&((1<<20)-1):]
 }
 
-func (w *MemDisk) ReadAt(b []byte, off int64) (int, error) {
-	if len(w.data) <= int(off) {
-		return 0, io.EOF
+func (w *MemDisk) WriteAt(b []byte, off int64) (int, error) {
+	n := len(b)
+	for len(b) > 0 {
+		buf := w.getData(off)
+		m := copy(buf, b)
+		if off+int64(m) > w.size {
+			w.size = off + int64(m)
+		}
+		b = b[m:]
+		off += int64(m)
 	}
-	n := copy(b, w.data[off:])
 	return n, nil
 }
 
+func (w *MemDisk) ReadAt(b []byte, off int64) (int, error) {
+	byteRead := 0
+	for byteRead < len(b) {
+		if off >= w.size {
+			return 0, io.EOF
+		}
+		buf := w.getData(off)
+		if int64(len(buf))+off > w.size {
+			buf = buf[:w.size-off]
+		}
+		if len(buf) == 0 {
+			return byteRead, io.EOF
+		}
+		n := copy(b[byteRead:], buf)
+		off += int64(n)
+		byteRead += n
+	}
+	return byteRead, nil
+}
+
 func (w *MemDisk) Dump() string {
-	return hex.Dump(w.data)
+	return hex.Dump(w.getData(0))
 }
 
 func (w *MemDisk) SeekRead(offset int64, whence int) (ret int64) {

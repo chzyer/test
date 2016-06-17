@@ -101,9 +101,7 @@ func ReadAt(r io.ReaderAt, b []byte, at int64) {
 func ReadAndCheck(r io.Reader, b []byte) {
 	buf := make([]byte, len(b))
 	Read(r, buf)
-	if !bytes.Equal(buf, b) {
-		Panic(0, fmt.Errorf("Read: result not equal"))
-	}
+	equalBytes(1, buf, b)
 }
 
 func Read(r io.Reader, b []byte) {
@@ -212,32 +210,41 @@ func toInt(a interface{}) (int64, bool) {
 	}
 }
 
-func Mark() {
+func MarkLine() {
 	r := strings.Repeat("-", 20)
 	println(r)
 }
 
 var globalMarkInfo string
 
-func MarkInfo(obj interface{}) {
-	globalMarkInfo = fmt.Sprint(obj)
+func Mark(obj ...interface{}) {
+	globalMarkInfo = fmt.Sprint(obj...)
 }
 
 func EqualBytes(a, b []byte) {
+	equalBytes(0, a, b)
+}
+
+func equalBytes(n int, a, b []byte) {
 	size := 16
 	if len(a) != len(b) {
-		Panic(0, fmt.Sprintf("equal bytes, %v != %v", len(a), len(b)))
+		Panic(n, fmt.Sprintf("equal bytes, %v != %v", len(a), len(b)))
 	}
 	if bytes.Equal(a, b) {
 		return
 	}
 
 	for off := 0; off < len(a); off += size {
-		if !bytes.Equal(a[off:off+size], b[off:off+size]) {
-			Panic(0, fmt.Sprintf(
-				"equal bytes in [%v, %v]:\n\t%v\n\t%v",
+		end := off + size
+		if end > len(a) {
+			end = len(a)
+		}
+		if !bytes.Equal(a[off:end], b[off:end]) {
+			Panic(n, fmt.Sprintf(
+				"equal [%v]byte in [%v, %v]:\n\t%v\n\t%v",
+				len(a),
 				off, off+size,
-				a[off:off+size], b[off:off+size],
+				a[off:end], b[off:end],
 			))
 		}
 	}

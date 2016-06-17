@@ -42,6 +42,17 @@ func (w *MemDisk) Dump() string {
 	return hex.Dump(w.data)
 }
 
+func (w *MemDisk) SeekRead(offset int64, whence int) (ret int64) {
+	switch whence {
+	case 0:
+		w.roff += int(offset)
+	case 1:
+		w.roff = int(offset)
+	default:
+	}
+	return int64(w.roff)
+}
+
 func (w *MemDisk) SeekWrite(offset int64, whence int) (ret int64) {
 	switch whence {
 	case 0:

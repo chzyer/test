@@ -107,10 +107,10 @@ func ReadAndCheck(r io.Reader, b []byte) {
 func Read(r io.Reader, b []byte) {
 	n, err := r.Read(b)
 	if err != nil && !logex.Equal(err, io.EOF) {
-		Panic(0, fmt.Errorf("Read: %v, got: %v", err))
+		Panic(0, fmt.Errorf("Read error: %v", err))
 	}
 	if n != len(b) {
-		Panic(0, fmt.Errorf("Read: %v, got: %v", n))
+		Panic(0, fmt.Errorf("Read: %v, want: %v", n, len(b)))
 	}
 }
 

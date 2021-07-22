@@ -332,9 +332,34 @@ func equal(d int, a, b interface{}, e []error) {
 		}
 		return
 	}
-	if !reflect.DeepEqual(a, b) {
+
+	result, ok := customEqual(a, b)
+	if !ok {
+		result = reflect.DeepEqual(a, b)
+	}
+	if !result {
 		Panic(d, fmt.Sprintf("%v: (%+v, %+v)", getErr(ErrNotEqual, e), a, b))
 	}
+}
+
+func customEqual(a, b interface{}) (bool, bool) {
+	typeA := reflect.TypeOf(a)
+	typeB := reflect.TypeOf(b)
+	if typeA != typeB {
+		return false, false
+	}
+	method, ok := typeA.MethodByName("Equal")
+	if !ok {
+		return false, false
+	}
+	if method.Type.NumIn() != 2 ||
+		method.Type.In(0) != method.Type.In(1) ||
+		method.Type.NumOut() != 1 ||
+		method.Type.Out(0).Kind() != reflect.Bool {
+		return false, false
+	}
+	result := method.Func.Call([]reflect.Value{reflect.ValueOf(a), reflect.ValueOf(b)})
+	return result[0].Bool(), true
 }
 
 func Should(b bool, e ...error) {

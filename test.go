@@ -34,6 +34,10 @@ type testException struct {
 	info  string
 }
 
+func (t *testException) String() string {
+	return t.info
+}
+
 func getMainRoot() string {
 	if mainRoot != "" {
 		return mainRoot
@@ -73,7 +77,19 @@ func New(t Failer) {
 		panic(err)
 	}
 
-	_, file, line, _ := runtime.Caller(5 + te.depth)
+	idx := -1
+	for i := 0; ; i++ {
+		_, file, _, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		if strings.HasPrefix(file, getMainRoot()) {
+			idx = i
+			break
+		}
+	}
+
+	_, file, line, _ := runtime.Caller(idx)
 	if strings.HasPrefix(file, getMainRoot()) {
 		file = file[len(getMainRoot()):]
 	}
@@ -107,10 +123,10 @@ func ReadAndCheck(r io.Reader, b []byte) {
 func Read(r io.Reader, b []byte) {
 	n, err := r.Read(b)
 	if err != nil && !logex.Equal(err, io.EOF) {
-		Panic(0, fmt.Errorf("Read: %v, got: %v", err))
+		Panic(0, fmt.Errorf("Read error: %v", err))
 	}
 	if n != len(b) {
-		Panic(0, fmt.Errorf("Read: %v, got: %v", n))
+		Panic(0, fmt.Errorf("Read: %v, want: %v", n, len(b)))
 	}
 }
 
@@ -418,3 +434,4 @@ func SeqBytes(n int) []byte {
 	}
 	return buf
 }
+

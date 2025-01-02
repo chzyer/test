@@ -80,6 +80,8 @@ func New(t Failer) {
 	idx := -1
 	for i := 0; ; i++ {
 		_, file, _, ok := runtime.Caller(i)
+
+		println(i, file)
 		if !ok {
 			break
 		}
@@ -343,6 +345,9 @@ func equal(d int, a, b interface{}, e []error) {
 }
 
 func customEqual(a, b interface{}) (bool, bool) {
+	if a == nil && b == nil {
+		return true, true
+	}
 	typeA := reflect.TypeOf(a)
 	typeB := reflect.TypeOf(b)
 	if typeA != typeB {
@@ -459,4 +464,3 @@ func SeqBytes(n int) []byte {
 	}
 	return buf
 }
-

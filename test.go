@@ -80,8 +80,6 @@ func New(t Failer) {
 	idx := -1
 	for i := 0; ; i++ {
 		_, file, _, ok := runtime.Caller(i)
-
-		println(i, file)
 		if !ok {
 			break
 		}
